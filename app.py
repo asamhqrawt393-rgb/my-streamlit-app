@@ -436,7 +436,15 @@ if code in phone_data:
     # 1. استخراج الإحداثيات من القاموس
     lat = phone_data[code]["lat"]
     lon = phone_data[code]["lon"]
+  # 1. التأكد أولاً أن المستخدم رفع ملفاً
+if uploaded_file is not None:
     
+    # 2. الآن فقط يمكننا فحص الحجم بأمان بالداخل
+    if uploaded_file.size > max_size:
+        st.warning("⚠️ تنبيه: حجم الملف كبير جداً!")
+    else:
+        st.success("✅ حجم الملف مناسب للفحص.")
+  
     # 2. تجهيز البيانات للخريطة (على شكل قاموس بسيط)
     map_data = {"lat": [lat], "lon": [lon]}
     
