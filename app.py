@@ -374,3 +374,11 @@ countries = {
     "20":  {"name": "مصر", "flag": "🇪🇬"},
     "971": {"name": "الإمارات", "flag": "🇦🇪"}
 }
+# قائمة بالكلمات التي تثير الشك
+suspicious_words = ["login", "update-account", "bit.ly"]
+
+url = "http://bit.ly/fake-login"
+
+for word in suspicious_words:
+    if word ____ url: # ما هي الكلمة البرمجية التي تعني "موجود في"؟
+        st.error(f"تحذير: الرابط يحتوي على كلمة مشبوهة: {word}")
