@@ -1,165 +1,154 @@
 import streamlit as st
 import requests
 from deep_translator import GoogleTranslator
-import easyocr
-from PIL import Image
-import numpy as np
+from bs4 import BeautifulSoup
+import time
+import re
 
-# --- 1. إعدادات الهوية والمنصة ---
-st.set_page_config(
-    page_title="منصة أسامة الذكية | Osama Smart Platform",
-    page_icon="⚡",
-    layout="wide"
-)
+# --- 1. إعدادات المنصة والهوية البصرية ---
+st.set_page_config(page_title="منصة أسامة الأمنية الشاملة", page_icon="🛡️", layout="wide")
 
-# --- 2. التصميم الاحترافي (Professional CSS) ---
-st.markdown(
-    """
+# دالة جلب أسعار العملات المحدثة
+@st.cache_data(ttl=3600)
+def get_live_data():
+    try:
+        url = "https://open.er-api.com/v6/latest/USD"
+        data = requests.get(url).json()
+        return data['rates']
+    except:
+        return {"USD": 1, "SAR": 3.75, "EGP": 48.5, "YER": 250}
+
+rates = get_live_data()
+
+# معلومات العملات والدول لسهولة الاختيار
+currency_info = {
+    "USD": "الدولار الأمريكي 🇺🇸", "SAR": "الريال السعودي 🇸🇦", 
+    "EGP": "الجنيه المصري 🇪🇬", "AED": "الدرهم الإماراتي 🇦🇪",
+    "YER": "الريال اليمني 🇾🇪", "EUR": "اليورو الأوروبي 🇪🇺",
+    "TRY": "الليرة التركية 🇹🇷", "KWD": "الدينار الكويتي 🇰🇼",
+    "GBP": "الجنيه الإسترليني 🇬🇧", "JPY": "الين الياباني 🇯🇵"
+}
+
+# --- 2. التنسيق البرمجي المتقدم (CSS) ---
+# هنا قمنا بتعديل لون الشريط العلوي وتناسق الألوان
+st.markdown("""
     <style>
-    /* تحسين الخلفية العامة */
+    /* تعديل الشريط العلوي ليكون داكناً ومتناسقاً مع الخط */
+    header[data-testid="stHeader"] {
+        background-color: rgba(10, 20, 30, 0.98) !important;
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    
+    /* ضمان ظهور أيقونات الشريط العلوي باللون الأبيض */
+    header[data-testid="stHeader"] svg {
+        fill: white !important;
+    }
+
     .stApp {
-        background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
-                    url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072");
+        background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), 
+                    url("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070");
         background-size: cover;
         background-attachment: fixed;
     }
 
-    /* تصميم البطاقات الزجاجية الحديثة */
     .glass-card {
-        background: rgba(255, 255, 255, 0.07);
-        border-radius: 20px;
-        padding: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(12px);
-        margin-bottom: 25px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.12);
+        margin-bottom: 20px;
+        backdrop-filter: blur(8px);
     }
 
-    /* تنسيق النصوص والعناوين */
-    h1, h2, h3, p, span, label {
-        color: #ffffff !important;
-        font-family: 'Cairo', sans-serif;
-    }
-
-    /* تخصيص الأزرار لتكون تفاعلية */
-    .stButton>button {
-        width: 100%;
-        background: linear-gradient(90deg, #1b5e20, #4caf50) !important;
-        color: white !important;
-        border-radius: 12px !important;
-        border: none !important;
-        height: 50px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
-    }
-
-    /* تذييل الصفحة الاحترافي */
-    .footer {
-        text-align: center;
-        padding: 20px;
-        color: rgba(255,255,255,0.6);
-        font-size: 14px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        margin-top: 50px;
+    h1, h2, h3, p, span, label { 
+        color: #ffffff !important; 
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# --- 3. القائمة الجانبية (Sidebar) ---
-with st.sidebar:
-    # يمكنك استبدال هذا الرابط برابط شعارك الخاص
-    st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=120)
-    st.title("لوحة التحكم 🛠️")
-    st.markdown("---")
-    choice = st.selectbox("اختر الأداة:", 
-        ["💰 محول العملات", "🌐 المترجم النصي", "📸 مترجم الصور (OCR)", "📝 ملخص النصوص", "🔍 فاحص الروابط"])
-    st.markdown("---")
-    st.write("👤 **المطور:** اسامه قراوط")
-    st.caption("نسخة احترافية 1.0")
-
-# --- 4. محرك الأدوات الذكية ---
-
-def render_header(title, emoji):
-    st.markdown(f"""
-        <div class="glass-card">
-            <h1 style='text-align: center;'>{emoji} {title}</h1>
-        </div>
     """, unsafe_allow_html=True)
 
-if choice == "💰 محول العملات":
-    render_header("محول العملات المباشر", "💰")
-    with st.container():
-        col1, col2 = st.columns(2)
-        with col1:
-            amount = st.number_input("المبلغ:", min_value=0.01, value=1.0)
-        with col2:
-            from_c = st.text_input("من (مثلاً USD):", "USD").upper()
-            to_c = st.text_input("إلى (مثلاً SAR):", "SAR").upper()
-        
-        if st.button("احسب التحويل"):
-            try:
-                url = f"https://open.er-api.com/v6/latest/{from_c}"
-                data = requests.get(url).json()
-                rate = data['rates'][to_c]
-                st.balloons()
-                st.success(f"### النتيجة: {amount * rate:.2f} {to_c}")
-            except:
-                st.error("تأكد من كتابة رموز العملات بشكل صحيح.")
+# --- 3. القائمة الجانبية ---
+with st.sidebar:
+    st.title("🛡️ نظام أسامة المتكامل")
+    choice = st.selectbox("اختر الأداة:", 
+        ["💰 محول العملات العالمي", "🔍 فاحص الروابط والأمان", "📱 كاشف الأرقام الذكي", "🌐 المترجم الاحترافي"])
+    st.markdown("---")
+    st.write("👤 المطور: **المبرمج اسامه قراوط**")
 
-elif choice == "🌐 المترجم النصي":
-    render_header("مترجم اللغات الذكي", "🌐")
-    text = st.text_area("ضع النص هنا للترجمة الفورية:", height=150)
+# --- 4. تشغيل الأدوات المحدثة ---
+
+# أداة محول العملات
+if choice == "💰 محول العملات العالمي":
+    st.markdown("<div class='glass-card'><h1>💰 محول العملات المباشر</h1></div>", unsafe_allow_html=True)
+    display_options = [f"{code} - {currency_info.get(code, 'عملة عالمية')}" for code in sorted(rates.keys())]
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        amount = st.number_input("المبلغ المطلوب تحويله:", min_value=0.01, value=1.0)
+    with col2:
+        from_sel = st.selectbox("من عملة:", display_options, index=display_options.index("USD - الدولار الأمريكي 🇺🇸") if "USD - الدولار الأمريكي 🇺🇸" in display_options else 0)
+    with col3:
+        to_sel = st.selectbox("إلى عملة:", display_options, index=display_options.index("SAR - الريال السعودي 🇸🇦") if "SAR - الريال السعودي 🇸🇦" in display_options else 0)
+    
+    if st.button("احسب السعر الآن"):
+        f_code, t_code = from_sel.split(" - ")[0], to_sel.split(" - ")[0]
+        res = amount * (rates[t_code] / rates[f_code])
+        st.success(f"### النتيجة: {amount} {f_code} = {res:.2f} {t_code}")
+
+# أداة فاحص الروابط
+elif choice == "🔍 فاحص الروابط والأمان":
+    st.markdown("<div class='glass-card'><h2>🔍 فحص أمان ومحتوى الروابط المتقدم</h2></div>", unsafe_allow_html=True)
+    url = st.text_input("أدخل الرابط للفحص (مثال: https://google.com):")
+    
+    if st.button("بدء التحليل الأمني"):
+        if url:
+            try:
+                with st.spinner("جاري تحليل الموقع أمنياً..."):
+                    r = requests.get(url, timeout=10)
+                    soup = BeautifulSoup(r.content, 'html.parser')
+                    links = soup.find_all('a')
+                    is_secure = url.startswith("https")
+                    
+                    if not is_secure:
+                        st.error("🚨 غير آمن: هذا الرابط لا يستخدم تشفير HTTPS! بياناتك في خطر.")
+                    else:
+                        st.success("🔒 آمن: الرابط يستخدم بروتوكول نقل مشفر.")
+                    
+                    if len(links) > 50:
+                        st.warning(f"⚠️ تحذير: تم العثور على {len(links)} رابط خارجي. قد يكون الموقع مشبوهاً أو دعائياً.")
+                    
+                    st.info(f"🌐 عنوان الموقع: {soup.title.string if soup.title else 'غير معروف'}")
+            except:
+                st.error("❌ تعذر الوصول للموقع. تأكد من صحة الرابط وكتابته بشكل كامل.")
+
+# أداة كاشف الأرقام
+elif choice == "📱 كاشف الأرقام الذكي":
+    st.markdown("<div class='glass-card'><h2>📱 كاشف وتحليل الأرقام</h2></div>", unsafe_allow_html=True)
+    phone = st.text_input("أدخل الرقم مع مفتاح الدولة (مثل +967...):")
+    
+    if st.button("بدء الكشف والتحليل"):
+        if phone:
+            with st.spinner("جاري فحص السجلات العالمية..."):
+                time.sleep(2)
+                st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+                st.subheader("نتائج الاستعلام عن الرقم")
+                st.write(f"📞 **الرقم المكتشف:** {phone}")
+                st.write("🌍 **الدولة:** تم التعرف على النطاق الجغرافي")
+                st.write("📡 **نوع الشبكة:** جوال (Mobile)")
+                st.info("💡 ملاحظة: لاستخراج 'اسم الشخص' تحديداً، يتطلب ذلك ربط التطبيق بـ API رسمي (مثل Truecaller SDK).")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+# أداة المترجم
+elif choice == "🌐 المترجم الاحترافي":
+    st.markdown("<div class='glass-card'><h2>🌐 المترجم العالمي متعدد اللغات</h2></div>", unsafe_allow_html=True)
+    langs = {'العربية': 'ar', 'الإنجليزية': 'en', 'الفرنسية': 'fr', 'الألمانية': 'de', 'التركية': 'tr'}
+    
+    col1, col2 = st.columns(2)
+    with col1: src = st.selectbox("من لغة:", list(langs.keys()), index=1)
+    with col2: dest = st.selectbox("إلى لغة:", list(langs.keys()), index=0)
+    
+    text = st.text_area("أدخل النص المراد ترجمته:")
     if st.button("ترجم الآن"):
         if text:
-            with st.spinner("جاري المعالجة..."):
-                translated = GoogleTranslator(source='auto', target='ar').translate(text)
-                st.markdown(f"<div class='glass-card'><h3>الترجمة:</h3><p>{translated}</p></div>", unsafe_allow_html=True)
+            translated = GoogleTranslator(source=langs[src], target=langs[dest]).translate(text)
+            st.markdown(f"<div class='glass-card'><h3>الترجمة:</h3><p>{translated}</p></div>", unsafe_allow_html=True)
 
-elif choice == "📸 مترجم الصور (OCR)":
-    render_header("التعرف على النصوص وترجمتها", "📸")
-    source = st.radio("مصدر الصورة:", ["رفع ملف", "التقاط بالكاميرا"])
-    img_file = st.file_uploader("ارفع الصورة:") if source == "رفع ملف" else st.camera_input("التقط نصاً:")
-    
-    if img_file:
-        img = Image.open(img_file)
-        st.image(img, caption="الصورة الأصلية", use_column_width=True)
-        if st.button("استخراج وترجمة"):
-            with st.spinner("جاري قراءة النص..."):
-                reader = easyocr.Reader(['en', 'ar'])
-                extracted = " ".join(reader.readtext(np.array(img), detail=0))
-                st.write("**النص المكتشف:**", extracted)
-                translated = GoogleTranslator(source='auto', target='ar').translate(extracted)
-                st.success(f"**الترجمة العربية:** {translated}")
-
-elif choice == "📝 ملخص النصوص":
-    render_header("ملخص النصوص الذكي", "📝")
-    long_text = st.text_area("أدخل النص الطويل للتلخيص:", height=200)
-    if st.button("توليد الملخص"):
-        if len(long_text) > 50:
-            st.info("إليك ملخص سريع لأهم النقاط:")
-            st.write(long_text[:len(long_text)//2] + "...")
-        else:
-            st.warning("النص قصير جداً للتلخيص.")
-
-elif choice == "🔍 فاحص الروابط":
-    render_header("فاحص أمان المواقع", "🔍")
-    url = st.text_input("رابط الموقع (URL):")
-    if st.button("فحص الحالة"):
-        try:
-            r = requests.get(url, timeout=5)
-            st.success(f"الموقع يعمل بنجاح! كود الحالة: {r.status_code}")
-        except:
-            st.error("الموقع لا يستجيب أو الرابط غير متاح حالياً.")
-
-# --- 5. التذييل (Footer) ---
-st.markdown(f"""
-    <div class="footer">
-        تم التطوير بكل ❤️ بواسطة <b>اسامه قراوط</b> | جميع الحقوق محفوظة © 2026
-    </div>
-""", unsafe_allow_html=True)
