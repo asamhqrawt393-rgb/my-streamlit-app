@@ -374,11 +374,27 @@ countries = {
     "20":  {"name": "مصر", "flag": "🇪🇬"},
     "971": {"name": "الإمارات", "flag": "🇦🇪"}
 }
-# قائمة بالكلمات التي تثير الشك
-suspicious_words = ["login", "update-account", "bit.ly"]
+# قائمة بالكلمات المشبوهة التي قد تدل على تصيد احتيالي
+suspicious_words = ["login", "verify", "bit.ly", "update", "bank", "free"]
 
-url = "http://bit.ly/fake-login"
+url_input = st.text_input("أدخل الرابط للفحص:")
 
-for word in suspicious_words:
-    if word ____ url: # ما هي الكلمة البرمجية التي تعني "موجود في"؟
-        st.error(f"تحذير: الرابط يحتوي على كلمة مشبوهة: {word}")
+if st.button("بدء الفحص العميق 🔍"):
+    if url_input:
+        is_suspicious = False
+        found_word = ""
+        
+        # حلقة فحص للبحث عن الكلمات المشبوهة
+        for word in suspicious_words:
+            if word in url_input.lower(): # هنا استخدمنا "in" بدلاً من الفراغ
+                is_suspicious = True
+                found_word = word
+                break
+        
+        # عرض النتيجة في بطاقة زجاجية
+        if is_suspicious:
+            st.error(f"⚠️ تحذير: هذا الرابط مشبوه جداً! يحتوي على كلمة: {found_word}")
+        else:
+            st.success("✅ الرابط يبدو آمناً بناءً على الفحص الأولي.")
+    else:
+        st.warning("الرجاء إدخال رابط أولاً.")
