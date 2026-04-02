@@ -398,3 +398,54 @@ if st.button("بدء الفحص العميق 🔍"):
             st.success("✅ الرابط يبدو آمناً بناءً على الفحص الأولي.")
     else:
         st.warning("الرجاء إدخال رابط أولاً.")
+st.sidebar.title("دعم المشروع ☕")
+st.sidebar.write("إذا أعجبك التطبيق، يمكنك دعمنا لنستمر في تطوير ميزات احترافية جديدة.")
+st.sidebar.link_button("🚀 ادعم المطور الآن", "https://www.buymeacoffee.com/yourusername")
+# فحص إذا كان الرابط يحتوي على كلمة مشبوهة *أو* لا يبدأ ببروتوكول آمن
+if (any(word in url_input.lower() for word in suspicious_words)) or (not url_input.startswith("https://")):
+    st.error("⚠️ تحذير أمني: الرابط قد يكون خطيراً!")
+uploaded_file = st.file_uploader("اختر ملفاً لفحصه 📂", type=["jpg", "png", "pdf", "docx", "zip"])
+
+if uploaded_file is not None:
+    # هنا سنقوم بكتابة عمليات الفحص
+    file_details = {"اسم الملف": uploaded_file.name, "الحجم": uploaded_file.size}
+    st.write(file_details)
+if uploaded_file.size > max_size:
+    st.warning("⚠️ تنبيه: حجم الملف كبير جداً، قد يستغرق فحص الفيروسات وقتاً أطول.")
+# إنشاء الألسنة في أعلى الصفحة
+tab1, tab2, tab3 = st.tabs(["📱 كاشف الأرقام", "🔗 فحص الروابط", "📂 فحص الملفات"])
+
+with tab1:
+    st.header("كاشف الأرقام الذكي")
+    # هنا نضع كود كاشف الأرقام الذي طورناه سابقاً
+
+with tab2:
+    st.header("رادار الروابط المشبوهة")
+    # هنا نضع كود فحص الروابط (HTTPS والكلمات المشبوهة)
+
+with tab3:
+    st.header("فاحص الملفات المتقدم")
+    # هنا نضع كود الـ File Uploader وفحص الحجم والامتداد
+st.sidebar.subheader("آخر العمليات 🕒")
+
+# حلقة التكرار للمرور على عناصر السجل
+for item in st.session_state.history:
+    st.sidebar.write(f"• {item}")
+# لنفترض أن المستخدم أدخل رمز الدولة "967" وتم تخزينه في المتغير code
+if code in phone_data:
+    # 1. استخراج الإحداثيات من القاموس
+    lat = phone_data[code]["lat"]
+    lon = phone_data[code]["lon"]
+    
+    # 2. تجهيز البيانات للخريطة (على شكل قاموس بسيط)
+    map_data = {"lat": [lat], "lon": [lon]}
+    
+    # 3. عرض الخريطة
+    st.write(f"موقع الدولة: {phone_data[code]['country']}")
+    st.map(map_data)
+# استخراج البيانات من القاموس
+country_name = phone_data[code]["country"]
+country_flag = phone_data[code]["flag"]
+
+# عرض رسالة النجاح مع العلم والاسم
+st.success(f"✅ تم التعرف على الدولة: {country_name} {country_flag}")
