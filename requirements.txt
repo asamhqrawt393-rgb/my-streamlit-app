@@ -2,6 +2,8 @@ streamlit
 requests
 deep-translator
 easyocr
-opencv-python-headless
-Pillow
+pillow
 numpy
+pandas
+plotly
+beautifulsoup4
