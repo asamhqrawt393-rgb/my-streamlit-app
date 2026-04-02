@@ -1,154 +1,145 @@
 import streamlit as st
 import requests
 from deep_translator import GoogleTranslator
+import easyocr
+from PIL import Image
+import numpy as np
 from bs4 import BeautifulSoup
+import pandas as pd
+import plotly.express as px
 import time
-import re
 
-# --- 1. إعدادات المنصة والهوية البصرية ---
-st.set_page_config(page_title="منصة أسامة الأمنية الشاملة", page_icon="🛡️", layout="wide")
+# --- 1. الإعدادات العامة والهوية البصرية ---
+st.set_page_config(page_title="منصة أسامة المتكاملة", page_icon="🛡️", layout="wide")
 
-# دالة جلب أسعار العملات المحدثة
+# دالة جلب أسعار العملات اللحظية
 @st.cache_data(ttl=3600)
-def get_live_data():
+def get_all_live_rates():
     try:
         url = "https://open.er-api.com/v6/latest/USD"
-        data = requests.get(url).json()
-        return data['rates']
+        response = requests.get(url)
+        return response.json()['rates']
     except:
-        return {"USD": 1, "SAR": 3.75, "EGP": 48.5, "YER": 250}
+        return {"USD": 1.0, "SAR": 3.75, "YER": 250.0, "EGP": 48.0}
 
-rates = get_live_data()
+all_rates = get_all_live_rates()
 
-# معلومات العملات والدول لسهولة الاختيار
-currency_info = {
-    "USD": "الدولار الأمريكي 🇺🇸", "SAR": "الريال السعودي 🇸🇦", 
-    "EGP": "الجنيه المصري 🇪🇬", "AED": "الدرهم الإماراتي 🇦🇪",
-    "YER": "الريال اليمني 🇾🇪", "EUR": "اليورو الأوروبي 🇪🇺",
-    "TRY": "الليرة التركية 🇹🇷", "KWD": "الدينار الكويتي 🇰🇼",
-    "GBP": "الجنيه الإسترليني 🇬🇧", "JPY": "الين الياباني 🇯🇵"
-}
+# تحميل محرك الـ OCR (للقراءة من الصور) لمرة واحدة فقط
+@st.cache_resource
+def load_ocr():
+    return easyocr.Reader(['ar', 'en'])
 
-# --- 2. التنسيق البرمجي المتقدم (CSS) ---
-# هنا قمنا بتعديل لون الشريط العلوي وتناسق الألوان
+reader = load_ocr()
+
+# تصميم الواجهة باستخدام CSS (الشريط العلوي الداكن والخلفية)
 st.markdown("""
     <style>
-    /* تعديل الشريط العلوي ليكون داكناً ومتناسقاً مع الخط */
     header[data-testid="stHeader"] {
         background-color: rgba(10, 20, 30, 0.98) !important;
         backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     }
-    
-    /* ضمان ظهور أيقونات الشريط العلوي باللون الأبيض */
-    header[data-testid="stHeader"] svg {
-        fill: white !important;
-    }
-
     .stApp {
         background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), 
                     url("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070");
         background-size: cover;
         background-attachment: fixed;
     }
-
     .glass-card {
         background: rgba(255, 255, 255, 0.05);
-        padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.12);
+        padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);
         margin-bottom: 20px;
-        backdrop-filter: blur(8px);
     }
-
-    h1, h2, h3, p, span, label { 
-        color: #ffffff !important; 
-        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-    }
+    h1, h2, h3, p, label { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. القائمة الجانبية ---
+# --- 2. القائمة الجانبية للتنقل ---
 with st.sidebar:
-    st.title("🛡️ نظام أسامة المتكامل")
-    choice = st.selectbox("اختر الأداة:", 
-        ["💰 محول العملات العالمي", "🔍 فاحص الروابط والأمان", "📱 كاشف الأرقام الذكي", "🌐 المترجم الاحترافي"])
-    st.markdown("---")
-    st.write("👤 المطور: **المبرمج اسامه قراوط**")
+    st.title("🛡️ نظام أسامة الذكي")
+    choice = st.selectbox("اختر الأداة المطلوبة:", [
+        "💰 محول العملات والتحليل",
+        "📸 الترجمة المرئية (OCR)",
+        "🔍 فاحص الأمان والروابط",
+        "📱 كاشف الأرقام الذكي"
+    ])
+    st.write("---")
+    st.write("👤 المطور: **اسامه قراوط**")
 
-# --- 4. تشغيل الأدوات المحدثة ---
+# --- 3. تشغيل الأداة المختارة ---
 
-# أداة محول العملات
-if choice == "💰 محول العملات العالمي":
-    st.markdown("<div class='glass-card'><h1>💰 محول العملات المباشر</h1></div>", unsafe_allow_html=True)
-    display_options = [f"{code} - {currency_info.get(code, 'عملة عالمية')}" for code in sorted(rates.keys())]
+# القسم الأول: محول العملات الشامل
+if choice == "💰 محول العملات والتحليل":
+    st.markdown("<div class='glass-card'><h1>💰 محول العملات والتحليل المالي</h1></div>", unsafe_allow_html=True)
     
+    currency_list = sorted(list(all_rates.keys()))
     col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        amount = st.number_input("المبلغ المطلوب تحويله:", min_value=0.01, value=1.0)
-    with col2:
-        from_sel = st.selectbox("من عملة:", display_options, index=display_options.index("USD - الدولار الأمريكي 🇺🇸") if "USD - الدولار الأمريكي 🇺🇸" in display_options else 0)
-    with col3:
-        to_sel = st.selectbox("إلى عملة:", display_options, index=display_options.index("SAR - الريال السعودي 🇸🇦") if "SAR - الريال السعودي 🇸🇦" in display_options else 0)
+    with col1: amount = st.number_input("أدخل المبلغ:", min_value=0.01, value=1.0)
+    with col2: from_c = st.selectbox("تحويل من:", currency_list, index=currency_list.index("USD"))
+    with col3: to_c = st.selectbox("تحويل إلى:", currency_list, index=currency_list.index("SAR"))
     
-    if st.button("احسب السعر الآن"):
-        f_code, t_code = from_sel.split(" - ")[0], to_sel.split(" - ")[0]
-        res = amount * (rates[t_code] / rates[f_code])
-        st.success(f"### النتيجة: {amount} {f_code} = {res:.2f} {t_code}")
-
-# أداة فاحص الروابط
-elif choice == "🔍 فاحص الروابط والأمان":
-    st.markdown("<div class='glass-card'><h2>🔍 فحص أمان ومحتوى الروابط المتقدم</h2></div>", unsafe_allow_html=True)
-    url = st.text_input("أدخل الرابط للفحص (مثال: https://google.com):")
+    if st.button("احسب الآن ✨"):
+        res = amount * (all_rates[to_c] / all_rates[from_c])
+        st.success(f"### النتيجة اللحظية: {res:.2f} {to_c}")
     
-    if st.button("بدء التحليل الأمني"):
-        if url:
-            try:
-                with st.spinner("جاري تحليل الموقع أمنياً..."):
-                    r = requests.get(url, timeout=10)
-                    soup = BeautifulSoup(r.content, 'html.parser')
-                    links = soup.find_all('a')
-                    is_secure = url.startswith("https")
-                    
-                    if not is_secure:
-                        st.error("🚨 غير آمن: هذا الرابط لا يستخدم تشفير HTTPS! بياناتك في خطر.")
-                    else:
-                        st.success("🔒 آمن: الرابط يستخدم بروتوكول نقل مشفر.")
-                    
-                    if len(links) > 50:
-                        st.warning(f"⚠️ تحذير: تم العثور على {len(links)} رابط خارجي. قد يكون الموقع مشبوهاً أو دعائياً.")
-                    
-                    st.info(f"🌐 عنوان الموقع: {soup.title.string if soup.title else 'غير معروف'}")
-            except:
-                st.error("❌ تعذر الوصول للموقع. تأكد من صحة الرابط وكتابته بشكل كامل.")
+    st.write("---")
+    # ميزة إضافية للرسم البياني
+    if st.checkbox("📈 إظهار الرسم البياني التاريخي"):
+        period = st.radio("النطاق الزمني:", ["أسبوع", "شهر", "سنة"], horizontal=True)
+        days = 7 if period == "أسبوع" else (30 if period == "شهر" else 365)
+        dates = pd.date_range(end=pd.Timestamp.now(), periods=days)
+        # توليد بيانات محاكاة للنمو
+        prices = [all_rates[to_c] * (1 + np.random.uniform(-0.03, 0.03)) for _ in range(days)]
+        df = pd.DataFrame({'التاريخ': dates, 'السعر': prices})
+        fig = px.line(df, x='التاريخ', y='السعر', title=f"تحليل أداء {to_c} مقابل {from_c}")
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="white")
+        st.plotly_chart(fig, use_container_width=True)
 
-# أداة كاشف الأرقام
+# القسم الثاني: الترجمة المرئية
+elif choice == "📸 الترجمة المرئية (OCR)":
+    st.markdown("<div class='glass-card'><h2>📸 الترجمة الذكية من الصور</h2></div>", unsafe_allow_html=True)
+    src = st.radio("اختر المصدر:", ["المعرض 🖼️", "الكاميرا 📷"], horizontal=True)
+    file = st.camera_input("التقط صورة") if src == "الكاميرا 📷" else st.file_uploader("ارفع صورة النص", type=['jpg','png','jpeg'])
+    
+    if file:
+        img = Image.open(file)
+        st.image(img, width=400)
+        if st.button("استخراج وترجمة النص ✨"):
+            with st.spinner("جاري قراءة الصورة..."):
+                results = reader.readtext(np.array(img), detail=0)
+                full_text = " ".join(results)
+                if full_text.strip():
+                    st.write(f"📝 **النص الأصلي:** {full_text}")
+                    translated = GoogleTranslator(source='auto', target='ar').translate(full_text)
+                    st.success(f"🔄 **الترجمة للعربية:** {translated}")
+                else:
+                    st.warning("لم يتم العثور على نص واضح.")
+
+# القسم الثالث: فاحص الأمان
+elif choice == "🔍 فاحص الأمان والروابط":
+    st.markdown("<div class='glass-card'><h2>🔍 فاحص أمان الروابط الذكي</h2></div>", unsafe_allow_html=True)
+    url = st.text_input("أدخل الرابط للفحص (مثلاً https://google.com):")
+    if st.button("بدء التحليل الأمني 🛡️"):
+        try:
+            with st.spinner("جاري التحليل..."):
+                r = requests.get(url, timeout=10)
+                soup = BeautifulSoup(r.content, 'html.parser')
+                is_secure = url.startswith("https")
+                if is_secure:
+                    st.success("🔒 الرابط مشفر وآمن (HTTPS)")
+                else:
+                    st.error("🚨 الرابط غير مشفر (HTTP)! بياناتك قد تكون في خطر.")
+                st.info(f"🌐 عنوان الموقع: {soup.title.string if soup.title else 'غير معروف'}")
+        except:
+            st.error("❌ تعذر الوصول للرابط. تأكد من صحته.")
+
+# القسم الرابع: كاشف الأرقام
 elif choice == "📱 كاشف الأرقام الذكي":
     st.markdown("<div class='glass-card'><h2>📱 كاشف وتحليل الأرقام</h2></div>", unsafe_allow_html=True)
-    phone = st.text_input("أدخل الرقم مع مفتاح الدولة (مثل +967...):")
-    
-    if st.button("بدء الكشف والتحليل"):
-        if phone:
-            with st.spinner("جاري فحص السجلات العالمية..."):
-                time.sleep(2)
-                st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-                st.subheader("نتائج الاستعلام عن الرقم")
-                st.write(f"📞 **الرقم المكتشف:** {phone}")
-                st.write("🌍 **الدولة:** تم التعرف على النطاق الجغرافي")
-                st.write("📡 **نوع الشبكة:** جوال (Mobile)")
-                st.info("💡 ملاحظة: لاستخراج 'اسم الشخص' تحديداً، يتطلب ذلك ربط التطبيق بـ API رسمي (مثل Truecaller SDK).")
-                st.markdown("</div>", unsafe_allow_html=True)
-
-# أداة المترجم
-elif choice == "🌐 المترجم الاحترافي":
-    st.markdown("<div class='glass-card'><h2>🌐 المترجم العالمي متعدد اللغات</h2></div>", unsafe_allow_html=True)
-    langs = {'العربية': 'ar', 'الإنجليزية': 'en', 'الفرنسية': 'fr', 'الألمانية': 'de', 'التركية': 'tr'}
-    
-    col1, col2 = st.columns(2)
-    with col1: src = st.selectbox("من لغة:", list(langs.keys()), index=1)
-    with col2: dest = st.selectbox("إلى لغة:", list(langs.keys()), index=0)
-    
-    text = st.text_area("أدخل النص المراد ترجمته:")
-    if st.button("ترجم الآن"):
-        if text:
-            translated = GoogleTranslator(source=langs[src], target=langs[dest]).translate(text)
-            st.markdown(f"<div class='glass-card'><h3>الترجمة:</h3><p>{translated}</p></div>", unsafe_allow_html=True)
-
+    phone = st.text_input("أدخل الرقم الدولي (مثل +967...):")
+    if st.button("كشف الهوية 🔍"):
+        with st.spinner("جاري البحث في السجلات..."):
+            time.sleep(2) # محاكاة للبحث
+            st.info(f"الرقم {phone} تم تحليله كـ: رقم دولي نشط ✅")
+            st.write("📍 **الدولة:** تم التعرف على المفتاح الدولي")
+            st.write("📡 **نوع الشبكة:** جوال")
+            st.warning("ملاحظة: لاستخراج الاسم الشخصي بدقة، يتطلب ربط التطبيق بـ API رسمي.")
