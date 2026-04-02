@@ -368,3 +368,9 @@ if choice == "✍️ المترجم النصي العالمي":
 st.markdown("<br><br><p style='text-align: center; color: #888;'>🚀 جميع الحقوق محفوظة لـ <b>أسامة قراوط</b> &copy; 2026</p>", unsafe_allow_html=True)
 
 # (بقية الأقسام تظل كما هي...)
+countries = {
+    "967": {"name": "اليمن", "flag": "🇾🇪"},
+    "966": {"name": "السعودية", "flag": "🇸🇦"},
+    "20":  {"name": "مصر", "flag": "🇪🇬"},
+    "971": {"name": "الإمارات", "flag": "🇦🇪"}
+}
