@@ -1,67 +1,82 @@
 import streamlit as st
 import requests
 from deep_translator import GoogleTranslator
-import easyocr
-from PIL import Image
-import numpy as np
-from bs4 import BeautifulSoup
 import pandas as pd
 import plotly.express as px
-import time
-import streamlit as st
-import pandas as pd
-import streamlit as st
-import requests
-from deep_translator import GoogleTranslator
 
-# --- 1. الإعدادات الأساسية ---
-st.set_page_config(page_title="منصة أسامة", page_icon="🛡️")
+# --- 1. الإعدادات والتنسيق الجمالي (CSS) ---
+st.set_page_config(page_title="منصة أسامة المتكاملة", page_icon="🛡️", layout="wide")
 
-# حد الحجم للملفات (10 ميجابايت)
-max_size = 10 * 1024 * 1024 
+st.markdown("""
+    <style>
+    /* تلوين القائمة الجانبية والنصوص بداخلها */
+    [data-testid="stSidebar"] {
+        background-color: #001f3f !important;
+    }
+    [data-testid="stSidebar"] *, [data-testid="stSidebarNavSeparator"] {
+        color: white !important;
+    }
+    
+    /* تلوين السهم العلوي والأيقونات */
+    button[kind="header"], .st-emotion-cache-15ec669 {
+        color: white !important;
+    }
 
-# --- 2. القائمة الجانبية (نفس أسلوبك السابق) ---
+    /* تصميم البطاقة الزجاجية لنتائج الترجمة */
+    .result-card {
+        background: rgba(0, 122, 255, 0.15);
+        padding: 30px;
+        border-radius: 20px;
+        border: 2px solid rgba(0, 122, 255, 0.4);
+        backdrop-filter: blur(10px);
+        margin-top: 20px;
+        text-align: right;
+    }
+
+    .stApp {
+        background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
+                    url("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070");
+        background-size: cover;
+    }
+    h1, h2, h3, label { color: white !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. القائمة الجانبية ---
 with st.sidebar:
-    st.title("🛡️ نظام أسامة الذكي")
-    choice = st.selectbox("اختر الأداة المطلوبة:", [
-        "💰 محول العملات",
-        "✍️ المترجم النصي",
-        "🔍 فاحص الأمان والملفات", # دمجناهم هنا لسهولة الوصول
-        "📱 كاشف الأرقام"
+    st.markdown("## 🛡️ نظام أسامة الذكي")
+    choice = st.selectbox("القائمة المنسدلة:", [
+        "✍️ المترجم النصي العالمي",
+        "💰 محول العملات والتحليل",
+        "📸 الترجمة المرئية (OCR)",
+        "🔍 فاحص الأمان"
     ])
     st.write("---")
-    st.sidebar.link_button("🚀 ادعم المطور", "https://www.buymeacoffee.com/yourusername")
-    st.info("المطور: أسامة قراوط")
+    st.info("👤 المطور: **اسامه قراوط**")
 
-# --- 3. تشغيل الأدوات ---
+# --- 3. تشغيل الميزات ---
 
-# أداة فحص الأمان والملفات (حيث حدث الخطأ سابقاً)
-if choice == "🔍 فاحص الأمان والملفات":
-    st.header("🔍 فحص الروابط والملفات")
+if choice == "✍️ المترجم النصي العالمي":
+    st.title("✍️ المترجم الذكي الشامل")
+    text_input = st.text_area("أدخل النص هنا:", height=150)
     
-    # جزء الروابط
-    url_input = st.text_input("أدخل الرابط للفحص:")
-    if st.button("فحص الرابط"):
-        if url_input.startswith("https://"):
-            st.success("🔒 الرابط آمن ومشفر")
+    # قائمة اللغات
+    langs = {'العربية': 'ar', 'الإنجليزية': 'en', 'الفرنسية': 'fr', 'التركية': 'tr', 'الألمانية': 'de'}
+    target = st.selectbox("اختر لغة الهدف:", list(langs.keys()))
+    
+    if st.button("ترجمة النص ✨"):
+        if text_input:
+            with st.spinner("جاري المعالجة..."):
+                translation = GoogleTranslator(source='auto', target=langs[target]).translate(text_input)
+                # عرض النتيجة داخل البطاقة الزجاجية
+                st.markdown(f"""
+                    <div class="result-card">
+                        <h3 style="color: #007AFF !important;">✅ النتيجة:</h3>
+                        <p style="font-size: 1.2em; line-height: 1.6;">{translation}</p>
+                    </div>
+                """, unsafe_allow_html=True)
         else:
-            st.error("⚠️ الرابط غير مشفر!")
+            st.warning("يرجى كتابة نص للبدء.")
 
-    st.write("---")
-    
-    # جزء الملفات (تم إصلاح الخطأ هنا)
-    uploaded_file = st.file_uploader("ارفع ملفاً لفحصه", type=["jpg", "png", "pdf"])
-    
-    if uploaded_file is not None:
-        # الفحص يتم فقط إذا وُجد ملف، لتجنب AttributeError
-        if uploaded_file.size > max_size:
-            st.warning("⚠️ حجم الملف كبير جداً!")
-        else:
-            st.success(f"✅ الملف {uploaded_file.name} جاهز وآمن.")
-
-# أداة كاشف الأرقام
-elif choice == "📱 كاشف الأرقام":
-    st.header("📱 كاشف الأرقام")
-    phone = st.text_input("أدخل الرقم الدولي:")
-    if st.button("كشف"):
-        st.info(f"الرقم {phone} قيد التحليل... (يتطلب ربط API للاسم)")
+# --- 4. التذييل (Footer) ---
+st.markdown("<br><br><p style='text-align: center; color: #888;'>🚀 جميع الحقوق محفوظة لـ <b>أسامة قراوط</b> &copy; 2026</p>", unsafe_allow_html=True)
