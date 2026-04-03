@@ -1,0 +1,59 @@
+import streamlit as st
+import requests
+from deep_translator import GoogleTranslator
+
+# --- 1. الإعدادات العامة (يجب أن تكون في البداية) ---
+st.set_page_config(page_title="منصة أسامة الشاملة", page_icon="🛡️")
+
+# دالة لجلب أسعار العملات (لتجنب خطأ NameError في المحول)
+@st.cache_data
+def get_rates():
+    try:
+        # جلب البيانات من مصدر مفتوح
+        url = "https://open.er-api.com/v6/latest/USD"
+        return requests.get(url).json()['rates']
+    except:
+        # قيم احتياطية في حال تعطل الإنترنت
+        return {"USD": 1, "SAR": 3.75, "YER": 250, "EGP": 48}
+
+all_rates = get_rates()
+
+# بيانات الدول لكاشف الأرقام
+countries = {
+    "967": {"name": "اليمن", "flag": "🇾🇪"},
+    "966": {"name": "السعودية", "flag": "🇸🇦"},
+    "20":  {"name": "مصر", "flag": "🇪🇬"}
+}
+
+# --- 2. القائمة الجانبية ---
+with st.sidebar:
+    st.title("🛡️ نظام أسامة الذكي")
+    choice = st.selectbox("اختر الأداة:", [
+        "💰 محول العملات",
+        "✍️ المترجم النصي",
+        "🔍 فاحص الأمان والملفات",
+        "📱 كاشف الأرقام"
+    ])
+if choice == "💰 محول العملات":
+    st.header("💰 محول العملات العالمي")
+    
+    # 1. استخراج قائمة جميع العملات المتاحة من البيانات التي جلبناها
+    currency_list = sorted(list(all_rates.keys()))
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        amount = st.number_input("أدخل المبلغ:", min_value=0.01, value=1.0)
+    
+    with col2:
+        # قائمة العملة المصدر (مرتبة أبجدياً)
+        from_c = st.selectbox("من عملة:", currency_list, index=currency_list.index("USD") if "USD" in currency_list else 0)
+        
+    with col3:
+        # قائمة العملة الهدف
+        to_c = st.selectbox("إلى عملة:", currency_list, index=currency_list.index("SAR") if "SAR" in currency_list else 0)
+
+    if st.button("احسب الآن ✨"):
+        # تنفيذ المعادلة التي ناقشناها
+        res = amount * (all_rates[to_c] / all_rates[from_c])
+        st.success(f"### النتيجة: {res:.2f} {to_c}")
