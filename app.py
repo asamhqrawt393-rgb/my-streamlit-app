@@ -167,3 +167,42 @@ if uploaded_file.size > max_size:
     st.warning("⚠️ تنبيه: حجم الملف كبير جداً، قد يستغرق فحص الفيروسات وقتاً أطول.")
 if uploaded_file.size > max_size:
     st.warning("⚠️ تنبيه: حجم الملف كبير جداً، قد يستغرق فحص الفيروسات وقتاً أطول.")
+# --- تحديث التنسيق الجمالي (CSS) ---
+st.markdown("""
+    <style>
+    /* تغيير لون الشريط العلوي */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0, 32, 63, 0.95) !important; /* أزرق داكن */
+        backdrop-filter: blur(10px);
+    }
+
+    /* تحسين شكل البطاقات الزجاجية باللون الأزرق */
+    .glass-card {
+        background: rgba(0, 50, 100, 0.1); 
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid rgba(0, 122, 255, 0.3); /* إطار أزرق خفيف */
+        margin-bottom: 20px;
+    }
+
+    /* تلوين الأزرار باللون الأزرق */
+    .stButton>button {
+        background-color: #007AFF !important;
+        color: white !important;
+        border-radius: 10px;
+        border: none;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ... (بقية كود الأدوات هنا) ...
+
+# --- إضافة الحقوق في أسفل التطبيق ---
+st.markdown("---") # خط فاصل
+st.markdown("""
+    <div style='text-align: center; padding: 10px;'>
+        <p style='color: #888; font-size: 0.9em;'>
+            🚀 جميع الحقوق محفوظة لـ <b>أسامة قراوط</b> &copy; 2026
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
