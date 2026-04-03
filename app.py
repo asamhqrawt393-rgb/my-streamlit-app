@@ -92,3 +92,9 @@ elif choice == "📱 كاشف الأرقام الذكي":
 
 # --- 4. التذييل ---
 st.markdown("<p style='text-align: center; color: #888;'>🚀 جميع الحقوق محفوظة لأسامة قراوط &copy; 2026</p>", unsafe_allow_html=True)
+if st.button("احسب الآن ✨"):
+    # تنفيذ المعادلة
+    res = amount * (all_rates[to_c] / all_rates[from_c])
+    
+    # عرض النتيجة للمستخدم
+    st.success(f"### النتيجة: {res:.2f} {to_c}")
